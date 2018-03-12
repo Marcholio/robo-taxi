@@ -1,0 +1,31 @@
+{
+  "name": "robo-taxi-backend",
+  "version": "0.0.1",
+  "description": "Backend for robo taxi car pooling service",
+  "main": "index.js",
+  "scripts": {
+    "test": "test",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marcholio/robo-taxi.git"
+  },
+  "author": "Markus Tyrkkö",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Marcholio/robo-taxi/issues"
+  },
+  "homepage": "https://github.com/Marcholio/robo-taxi#readme",
+  "private": true,
+  "devDependencies": {
+    "eslint": "^4.18.2",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.9.0"
+  },
+  "dependencies": {
+    "express": "^4.16.2",
+    "http": "0.0.0",
+    "ws": "^5.0.0"
+  }
+}
