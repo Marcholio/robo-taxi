@@ -12,8 +12,13 @@ const minLon = 114.187131;
 const maxLat = 20.30303;
 const maxLon = 114.190479;
 
-wss.on('connection', ws => ws.send('Connected'));
+wss.on('connection', ws => {
+  console.log('moro');
+  ws.send('Connected');
+});
+
+setInterval(() => wss.clients.forEach(c => c.send('moro')), 1000);
 
 app.get('/', (req, res) => res.send('moro'));
 
-server.listen(3000, () => console.log('Server up and running'));
+server.listen(8080, () => console.log('Server up and running'));
