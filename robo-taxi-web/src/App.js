@@ -3,10 +3,9 @@ import logo from './logo.svg';
 import './App.css';
 
 class App extends Component {
-  componenDidMount() {
-    const ws = new WebSocket('wss://localhost:8080');
-    ws.onopen(() => console.log('Socket connected'));
-    ws.onmessage(msg => console.log(msg));
+  componentDidMount() {
+    const socket = new WebSocket('ws://localhost:8080');
+    socket.onmessage = event => console.log(JSON.parse(event.data));
   }
 
   render() {

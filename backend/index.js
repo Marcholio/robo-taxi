@@ -12,13 +12,23 @@ const minLon = 114.187131;
 const maxLat = 20.30303;
 const maxLon = 114.190479;
 
-wss.on('connection', ws => {
-  console.log('moro');
-  ws.send('Connected');
-});
+/*
+ * Returns a new request from customer to get a ride
+ */
+const getRideRequest = () => {
+  const lat = Math.random() * (maxLat - minLat) + minLat;
+  const lon = Math.random() * (maxLon - minLon) + minLon;
+  return { eventType: 'rideRequest', lat, lon };
+};
 
-setInterval(() => wss.clients.forEach(c => c.send('moro')), 1000);
+// Main loop for mocking ride requests
+setInterval(
+  () => wss.clients.forEach(c => c.send(JSON.stringify(getRideRequest()))),
+  1000
+);
 
 app.get('/', (req, res) => res.send('moro'));
 
-server.listen(8080, () => console.log('Server up and running'));
+server.listen(8080, () =>
+  console.log(`Socket running on ${server.address().port}`)
+);
