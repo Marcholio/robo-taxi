@@ -7,10 +7,10 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // Hong Kong area
-const minLat = 22.301441;
-const minLon = 114.187131;
-const maxLat = 20.30303;
-const maxLon = 114.190479;
+const minLat = 22.301;
+const minLon = 114.161;
+const maxLat = 22.336;
+const maxLon = 114.192183;
 
 /*
  * Returns a new request from customer to get a ride
@@ -24,7 +24,7 @@ const getRideRequest = () => {
 // Main loop for mocking ride requests
 setInterval(
   () => wss.clients.forEach(c => c.send(JSON.stringify(getRideRequest()))),
-  1000
+  5000
 );
 
 app.get('/', (req, res) => res.send('moro'));
