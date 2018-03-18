@@ -31,10 +31,9 @@ class MapWrapper extends Component {
   }
 
   // Adds new request for ride to state to add a marker to map
-  addRideRequest({ from }) {
-    const { lat, lon } = from;
+  addRideRequest(data) {
     this.setState({
-      rideRequests: this.state.rideRequests.concat([{ lat, lon }]),
+      rideRequests: this.state.rideRequests.concat([data]),
     });
   }
 
@@ -43,13 +42,14 @@ class MapWrapper extends Component {
       <Map google={this.props.google} initialCenter={center} styles={mapStyles}>
         {this.state.rideRequests.map(r => (
           <Marker
-            key={r.lat}
-            position={{ lat: r.lat, lng: r.lon }}
+            key={r.from.lat}
+            position={{ lat: r.from.lat, lng: r.from.lon }}
             icon={{
               url: customerIcon,
               anchor: new this.props.google.maps.Point(8, 8),
               scaledSize: new this.props.google.maps.Size(8, 8),
             }}
+            title={`${r.id.toString()} - ${r.assignedCar.id || null}`}
           />
         ))}
         {this.state.cars.map(c => (
@@ -61,6 +61,7 @@ class MapWrapper extends Component {
               anchor: new this.props.google.maps.Point(8, 8),
               scaledSize: new this.props.google.maps.Size(8, 8),
             }}
+            title={c.id.toString()}
           />
         ))}
       </Map>
