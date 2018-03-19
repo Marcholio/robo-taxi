@@ -2,14 +2,19 @@ const axios = require('axios');
 const { randomLat, randomLon } = require('./helpers.js');
 
 const cars = new Map();
-const carCount = 10;
+const carCount = 5;
 
 let id = 0;
 
 const newCar = () => {
   id += 1;
   const position = { lat: randomLat(), lon: randomLon() };
-  return { id, position, customer: null };
+  return {
+    id,
+    position,
+    customer: null,
+    route: null,
+  };
 };
 
 // Just wait for a while to give server some time to start
@@ -28,7 +33,14 @@ setInterval(() => {
   cars.forEach(c => {
     axios
       .post('http://localhost:8080/car', c)
-      .then(res => console.log(res.data))
+      .then(res => {
+        if (res.data.customer && c.customer === null) {
+          console.log(
+            `Customer ${res.data.customer.id} assigned for car ${res.data.id}`
+          );
+          cars.set(res.data.id, res.data);
+        }
+      })
       .catch(err => console.log(`ERROR: ${err.message}`));
   });
 }, 5000);

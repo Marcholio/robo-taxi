@@ -10,14 +10,14 @@ const { calculateDistance } = require('./utils/helpers.js');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+const cars = new Map();
 
 // Returns closest car to location of a ride request
-/*
 const getClosestCar = pos => {
   let closest = null;
   let currentMin = Number.MAX_SAFE_INTEGER;
   cars.forEach(c => {
-    if (c.available) {
+    if (c.customer === null) {
       if (closest === null) closest = c;
       else {
         const dist = calculateDistance(c.position, pos);
@@ -30,7 +30,7 @@ const getClosestCar = pos => {
   });
   return closest;
 };
-*/
+
 // Wrapper for Google direction API
 const getRoute = (from, to) =>
   axios
@@ -68,19 +68,49 @@ const broadcast = data =>
 app.use(bodyParser.json());
 
 app.post('/newcustomer', (req, res) => {
+  const car = getClosestCar(req.body.from);
+  if (car !== null) {
+    getRoute(car.position, req.body.from)
+      .then(route =>
+        cars.set(
+          car.id,
+          Object.assign(car, {
+            customer: req.body,
+            route,
+          })
+        )
+      )
+      .then(() =>
+        broadcast(
+          Object.assign(
+            {},
+            { car: cars.get(car.id) },
+            { eventType: 'updateCar' }
+          )
+        )
+      );
+  }
   broadcast(
-    Object.assign({}, { customer: req.body }, { eventType: 'rideRequest' })
+    Object.assign(
+      {},
+      { customer: req.body },
+      { eventType: 'rideRequest' },
+      { car }
+    )
   );
-  res.sendStatus(200);
+  res.send(car);
 });
 
 app.post('/car', (req, res) => {
   broadcast(Object.assign({}, { car: req.body }, { eventType: 'updateCar' }));
   if (!req.body.customer) {
-    res.send({ msg: 'moro' });
+    if (cars.get(req.body.id) && cars.get(req.body.id).customer !== null) {
+      res.send(cars.get(req.body.id));
+    }
   } else {
     res.sendStatus(200);
   }
+  cars.set(req.body.id, req.body);
 });
 
 app.get('/', (req, res) => res.send('Server is up'));
