@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "start": "nodemon index.js"
+    "start":
+      "nodemon index.js & nodemon utils/fakeCars.js & nodemon utils/fakeCustomers.js"
   },
   "repository": {
     "type": "git",
@@ -27,8 +28,10 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "body-parser": "^1.18.2",
     "dotenv": "^5.0.1",
     "express": "^4.16.2",
+    "faker": "^4.1.0",
     "http": "0.0.0",
     "ws": "^5.0.0"
   }

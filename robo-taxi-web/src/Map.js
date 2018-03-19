@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { GoogleApiWrapper, Map, Marker } from 'google-maps-react';
+import Immutable from 'immutable';
 import mapStyles from './MapStyles';
 import customerIcon from './icons/customer.png';
 import carAvailableIcon from './icons/car_free.png';
@@ -13,7 +14,7 @@ const center = { lat: 22.3185, lng: 114.1767936 };
 class MapWrapper extends Component {
   constructor() {
     super();
-    this.state = { rideRequests: [], cars: [] };
+    this.state = { rideRequests: [], cars: Immutable.Map() };
   }
 
   componentWillMount() {
@@ -23,9 +24,9 @@ class MapWrapper extends Component {
       const data = JSON.parse(event.data);
 
       if (data.eventType === 'rideRequest') {
-        this.addRideRequest(data);
-      } else if (data.eventType === 'initialCars') {
-        this.setState({ cars: data.cars });
+        this.addRideRequest(data.customer);
+      } else if (data.eventType === 'updateCar') {
+        this.updateCar(data.car);
       }
     };
   }
@@ -34,6 +35,13 @@ class MapWrapper extends Component {
   addRideRequest(data) {
     this.setState({
       rideRequests: this.state.rideRequests.concat([data]),
+    });
+  }
+
+  // Update car's data on map
+  updateCar(data) {
+    this.setState({
+      cars: this.state.cars.set(data.id, data),
     });
   }
 
@@ -49,21 +57,26 @@ class MapWrapper extends Component {
               anchor: new this.props.google.maps.Point(8, 8),
               scaledSize: new this.props.google.maps.Size(8, 8),
             }}
-            title={`${r.id.toString()} - ${r.assignedCar.id || null}`}
+            title={`${r.id.toString()}`}
           />
         ))}
-        {this.state.cars.map(c => (
-          <Marker
-            key={c.position.lat}
-            position={{ lat: c.position.lat, lng: c.position.lon }}
-            icon={{
-              url: c.available ? carAvailableIcon : carReservedIcon,
-              anchor: new this.props.google.maps.Point(8, 8),
-              scaledSize: new this.props.google.maps.Size(8, 8),
-            }}
-            title={c.id.toString()}
-          />
-        ))}
+        {this.state.cars.valueSeq().map(c => {
+          return (
+            <Marker
+              key={c.id}
+              position={{
+                lat: c.position.lat,
+                lng: c.position.lon,
+              }}
+              icon={{
+                url: c.customer === null ? carAvailableIcon : carReservedIcon,
+                anchor: new this.props.google.maps.Point(8, 8),
+                scaledSize: new this.props.google.maps.Size(8, 8),
+              }}
+              title={c.id.toString()}
+            />
+          );
+        })}
       </Map>
     ) : null;
   }
