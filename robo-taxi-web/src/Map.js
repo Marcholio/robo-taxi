@@ -69,7 +69,7 @@ class MapWrapper extends Component {
                 lng: c.position.lon,
               }}
               icon={{
-                url: c.customer === null ? carAvailableIcon : carReservedIcon,
+                url: c.available ? carAvailableIcon : carReservedIcon,
                 anchor: new this.props.google.maps.Point(8, 8),
                 scaledSize: new this.props.google.maps.Size(8, 8),
               }}

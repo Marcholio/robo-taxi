@@ -21,4 +21,4 @@ setInterval(() => {
     .post('http://localhost:8080/newcustomer', c)
     .then(() => console.log(`New customer request created: ${c.id}`))
     .catch(err => console.log(`ERROR: ${err.message}`));
-}, 5000);
+}, 15000);
