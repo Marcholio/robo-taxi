@@ -1,11 +1,9 @@
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
-const axios = require('axios');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
-const { calculateDistance } = require('./utils/helpers.js');
 const db = require('./dbFunctions.js');
 
 const app = express();
@@ -17,36 +15,41 @@ const wss = new WebSocket.Server({ server });
 // Create connection and clear database
 db.initialize();
 
-// Wrapper for Google direction API
-const getRoute = (from, to) =>
-  axios
-    .get(
-      `https://maps.googleapis.com/maps/api/directions/json?origin=${
-        from.lat
-      },${from.lon}&destination=${to.lat},${to.lon}&key=${
-        process.env.DIRECTIONS_API_KEY
-      }`
+wss.on('connection', client => {
+  db
+    .getAllCars()
+    .then(([cars]) =>
+      cars.map(c => ({
+        id: c.id,
+        position: {
+          lat: c.lat,
+          lon: c.lon,
+        },
+        available: c.status === null,
+      }))
     )
-    .then(res => {
-      const route = res.data.routes[0];
-      // Distance in meters
-      const distance = route.legs
-        .map(l => l.distance.value)
-        .reduce((acc, cur) => acc + cur);
-
-      // Duration in minutes
-      const duration = Math.round(
-        route.legs
-          .map(l => l.duration.value)
-          .reduce((acc, cur) => acc + cur / 60)
+    .then(cars => {
+      cars.forEach(c =>
+        client.send(JSON.stringify({ car: c, eventType: 'updateCar' }))
       );
-
-      // Coordinate points and durations for route subdivisions
-      const routeCoords = route.legs
-        .map(l => l.steps)
-        .reduce((acc, cur) => acc.concat(cur));
-      return { distance, duration, route: routeCoords };
     });
+  db
+    .getAllOpenRideRequests()
+    .then(([rides]) =>
+      rides.map(r => ({
+        id: r.cid,
+        from: {
+          lat: r.flat,
+          lon: r.flon,
+        },
+      }))
+    )
+    .then(rides => {
+      rides.forEach(r =>
+        client.send(JSON.stringify({ customer: r, eventType: 'rideRequest' }))
+      );
+    });
+});
 
 // Send given object as JSON to all clients
 const broadcast = data =>

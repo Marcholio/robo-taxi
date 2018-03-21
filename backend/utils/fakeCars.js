@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { randomLat, randomLon } = require('./helpers.js');
+const { randomLat, randomLon, getRoute } = require('./helpers.js');
 
 const cars = new Map();
 const carCount = 3;
@@ -30,6 +30,9 @@ setInterval(() => {
         if (res.data.customer) {
           console.log(
             `New customer ${res.data.customer.id} assigned for ${c.id}`
+          );
+          getRoute(c.position, res.data.customer.from).then(routeData =>
+            routeData.route.forEach(step => console.log(step.polyline.points))
           );
         }
       })

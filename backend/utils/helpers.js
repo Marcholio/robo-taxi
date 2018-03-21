@@ -1,3 +1,6 @@
+const axios = require('axios');
+require('dotenv').config();
+
 // Hong Kong area
 const minLat = 22.301;
 const minLon = 114.161;
@@ -28,4 +31,35 @@ const calculateDistance = (a, b) => {
   return 6371e3 * y;
 };
 
-module.exports = { randomLat, randomLon, calculateDistance };
+// Wrapper for Google direction API
+const getRoute = (from, to) =>
+  axios
+    .get(
+      `https://maps.googleapis.com/maps/api/directions/json?origin=${
+        from.lat
+      },${from.lon}&destination=${to.lat},${to.lon}&key=${
+        process.env.DIRECTIONS_API_KEY
+      }`
+    )
+    .then(res => {
+      const route = res.data.routes[0];
+      // Distance in meters
+      const distance = route.legs
+        .map(l => l.distance.value)
+        .reduce((acc, cur) => acc + cur);
+
+      // Duration in minutes
+      const duration = Math.round(
+        route.legs
+          .map(l => l.duration.value)
+          .reduce((acc, cur) => acc + cur / 60)
+      );
+
+      // Coordinate points and durations for route subdivisions
+      const routeCoords = route.legs
+        .map(l => l.steps)
+        .reduce((acc, cur) => acc.concat(cur));
+      return { distance, duration, route: routeCoords };
+    });
+
+module.exports = { randomLat, randomLon, calculateDistance, getRoute };

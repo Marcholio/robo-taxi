@@ -100,6 +100,18 @@ const updateRideRequest = (carId, rideId, status) =>
     `UPDATE rides SET car=${carId}, status='${status}' WHERE id=${rideId} AND status='OPEN'`
   );
 
+const getAllCars = () =>
+  sequelize.query(
+    'SELECT cars.id, cars.lat, cars.lon, rides.status FROM cars LEFT JOIN rides ON cars.id = rides.car'
+  );
+
+const getAllOpenRideRequests = () =>
+  sequelize.query(
+    `SELECT customers.id as cid, customers.lat as flat, customers.lon as flon
+    FROM rides JOIN customers ON rides.customer = customers.id
+    WHERE status IS NOT 'COMPLETED'`
+  );
+
 module.exports = {
   initialize,
   updateCustomer,
@@ -109,4 +121,6 @@ module.exports = {
   getClosestAvailableCustomer,
   checkIfClosestAvailableCar,
   updateRideRequest,
+  getAllCars,
+  getAllOpenRideRequests,
 };

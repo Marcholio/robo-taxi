@@ -145,7 +145,7 @@ export default [
     elementType: 'all',
     stylers: [
       {
-        color: '#146474',
+        visibility: 'off',
       },
     ],
   },

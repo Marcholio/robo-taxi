@@ -29,6 +29,9 @@ class MapWrapper extends Component {
         this.updateCar(data.car);
       }
     };
+    socket.onclose = () => {
+      setTimeout(() => window.location.reload(), 4000);
+    };
   }
 
   // Adds new request for ride to state to add a marker to map
