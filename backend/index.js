@@ -3,48 +3,19 @@ const WebSocket = require('ws');
 const http = require('http');
 const axios = require('axios');
 const bodyParser = require('body-parser');
-const Sequelize = require('sequelize');
 require('dotenv').config();
 
 const { calculateDistance } = require('./utils/helpers.js');
+const db = require('./dbFunctions.js');
 
 const app = express();
+app.use(bodyParser.json());
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const sequelize = new Sequelize('db', '', '', {
-  host: 'localhost',
-  dialect: 'sqlite',
-  operatorsAliases: false,
-  storage: './db.sqlite',
-  logging: false,
-});
-
-// Clear database when faker scripts start
-sequelize.query('DELETE FROM customers WHERE 1 = 1');
-sequelize.query('DELETE FROM rides WHERE 1 = 1');
-sequelize.query('DELETE FROM cars WHERE 1 = 1');
-
-const cars = new Map();
-
-// Returns closest car to location of a ride request
-const getClosestCar = pos => {
-  let closest = null;
-  let currentMin = Number.MAX_SAFE_INTEGER;
-  cars.forEach(c => {
-    if (c.customer === null) {
-      if (closest === null) closest = c;
-      else {
-        const dist = calculateDistance(c.position, pos);
-        if (dist < currentMin) {
-          currentMin = dist;
-          closest = c;
-        }
-      }
-    }
-  });
-  return closest;
-};
+// Create connection and clear database
+db.initialize();
 
 // Wrapper for Google direction API
 const getRoute = (from, to) =>
@@ -77,140 +48,62 @@ const getRoute = (from, to) =>
       return { distance, duration, route: routeCoords };
     });
 
+// Send given object as JSON to all clients
 const broadcast = data =>
   wss.clients.forEach(c => c.send(JSON.stringify(data)));
 
-app.use(bodyParser.json());
-
-app.post('/newcustomer', (req, res) => {
+app.post('/ride', (req, res) => {
   const { id, from, to } = req.body;
-  const { lat, lon } = from;
 
-  // Update customer on db
-  sequelize.query(
-    `INSERT OR REPLACE INTO customers (id, lat, lon) VALUES (${id}, ${lat}, ${lon})`
-  );
-
-  // Add ride request to database
-  sequelize.query(
-    `INSERT INTO rides (customer, lat, lon, status) VALUES (${id}, ${to.lat}, ${
-      to.lon
-    }, 'OPEN')`
-  );
+  db.updateCustomer(id, from.lat, from.lon);
+  db.addRideRequest(id, to.lat, to.lon);
 
   broadcast({ eventType: 'rideRequest', customer: req.body });
   res.sendStatus(200);
 });
 
 app.post('/car', (req, res) => {
-  const { id, position } = req.body;
-  const { lat, lon } = position;
+  const { id, position: { lat, lon } } = req.body;
 
-  // Update cars position on db
-  sequelize.query(
-    `INSERT OR REPLACE INTO cars (id, lat, lon) VALUES (${id}, ${lat}, ${lon})`
-  );
+  db.updateCar(id, lat, lon);
 
-  // Check if this car currently has a customer
-  sequelize
-    .query(
-      `SELECT * FROM rides WHERE car=${id} AND status IS 'RESERVED' LIMIT 1`
-    )
-    .then(([rows]) => {
-      if (rows.length === 0) {
-        // Check if there are any rides to complete
-        sequelize
-          .query(
-            `SELECT
-              rides.id as rid,
-              customers.id as cid,
-              customers.lat as flat,
-              customers.lon as flon,
-              rides.lat as tlat,
-              rides.lon as tlon
-            FROM rides JOIN customers ON customers.id = rides.customer
-            WHERE car IS NULL AND status IS NOT 'COMPLETED'`
-          )
-          .then(([availableCustomers]) => {
-            let customer = null;
-            availableCustomers
-              .map(c => ({
-                rideId: c.rid,
-                id: c.cid,
-                from: { lat: c.flat, lon: c.flon },
-                to: { lat: c.tlat, lon: c.tlon },
-                distance: calculateDistance(
-                  { lat: c.flat, lon: c.flon },
-                  position
-                ),
-              }))
-              // Find closest customer
-              .forEach(c => {
-                if (customer === null || customer.distance > c.distance) {
-                  customer = c;
-                }
-              });
-            if (customer !== null) {
-              let available = true;
-              sequelize
-                .query(
-                  `SELECT id, lat, lon FROM cars WHERE id NOT IN (SELECT car FROM rides WHERE status='RESERVED')`
-                )
-                // Check that this car is the closest to the customer
-                .then(([availableCars]) => {
-                  let min = null;
-                  availableCars.forEach(c => {
-                    const distance = calculateDistance(customer.from, {
-                      lat: c.lat,
-                      lon: c.lon,
-                    });
-                    if (min === null || distance < min.distance) {
-                      min = { id: c.id, distance };
-                    }
-                  });
-
-                  // No customer available if the car was not the closest to it
-                  if (min.id !== id) {
-                    customer = null;
-                  }
-                })
-                .then(() => {
-                  // Plain OK means no customer available
-                  if (customer === null) {
-                    res.sendStatus(200);
-                  } else {
-                    // Send new customer's data for car
-                    res.send({ customer });
-
-                    // Update ride request
-                    sequelize.query(
-                      `UPDATE rides SET car=${id}, status='RESERVED' WHERE id=${
-                        customer.rideId
-                      } AND status='OPEN'`
-                    );
-                    available = false;
-                  }
-                  broadcast({
-                    car: Object.assign(req.body, { available }),
-                    eventType: 'updateCar',
-                  });
-                });
+  db.isCarAvailable(id).then(isAvailable => {
+    if (isAvailable) {
+      db.getClosestAvailableCustomer({ lat, lon }).then(customer => {
+        if (customer !== null) {
+          let available = true;
+          db.checkIfClosestAvailableCar(id, customer).then(isClosest => {
+            if (!isClosest) {
+              res.sendStatus(200);
             } else {
-              broadcast({
-                car: Object.assign(req.body, { available: true }),
-                eventType: 'updateCar',
-              });
+              // Send new customer's data for car
+              res.send({ customer });
+
+              db.updateRideRequest(id, customer.rideId, 'RESERVED');
+              available = false;
             }
+            broadcast({
+              car: Object.assign(req.body, { available }),
+              eventType: 'updateCar',
+            });
           });
-      } else {
-        // Continue with existing customer
-        res.sendStatus(200);
-        broadcast({
-          car: Object.assign(req.body, { available: false }),
-          eventType: 'updateCar',
-        });
-      }
-    });
+          // No customers available
+        } else {
+          broadcast({
+            car: Object.assign(req.body, { available: true }),
+            eventType: 'updateCar',
+          });
+        }
+      });
+    } else {
+      // Continue with existing customer
+      res.sendStatus(200);
+      broadcast({
+        car: Object.assign(req.body, { available: false }),
+        eventType: 'updateCar',
+      });
+    }
+  });
 });
 
 app.get('/', (req, res) => res.send('Server is up'));

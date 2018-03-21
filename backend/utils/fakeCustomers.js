@@ -18,7 +18,7 @@ setInterval(() => {
   const c = newCustomer();
   customers.set(c.id, c);
   axios
-    .post('http://localhost:8080/newcustomer', c)
-    .then(() => console.log(`New customer request created: ${c.id}`))
+    .post('http://localhost:8080/ride', c)
+    .then(() => console.log(`New ride request created: ${c.id}`))
     .catch(err => console.log(`ERROR: ${err.message}`));
 }, 15000);
