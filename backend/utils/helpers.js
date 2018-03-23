@@ -62,4 +62,57 @@ const getRoute = (from, to) =>
       return { distance, duration, route: routeCoords };
     });
 
-module.exports = { randomLat, randomLon, calculateDistance, getRoute };
+// Decodes Google Maps encoded polyline
+// Docs: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+// Inspiration from: https://gist.github.com/ismaels/6636986
+/* eslint-disable no-bitwise */
+const decodePolyline = str => {
+  const points = [];
+  let i = 0;
+  let lat = 0;
+  let lon = 0;
+  const len = str.length;
+
+  while (i < len) {
+    // Find latitude
+    let bin;
+    let shift = 0;
+    let res = 0;
+
+    do {
+      bin = str.charAt(i).charCodeAt(0) - 63;
+      res |= (bin & 0x1f) << shift;
+      shift += 5;
+      i += 1;
+    } while (bin >= 0x20);
+
+    // Accumulate change to previous coord
+    lat += (res & 1) !== 0 ? ~(res >> 1) : res >> 1;
+
+    // Find longitude
+    shift = 0;
+    res = 0;
+
+    do {
+      bin = str.charAt(i).charCodeAt(0) - 63;
+      res |= (bin & 0x1f) << shift;
+      shift += 5;
+      i += 1;
+    } while (bin >= 0x20);
+
+    // Accumulate change to previous coord
+    lon += (res & 1) !== 0 ? ~(res >> 1) : res >> 1;
+
+    points.push({ latitude: lat / 1e5, longitude: lon / 1e5 });
+  }
+  return points;
+};
+/* eslint-enable no-bitwise */
+
+module.exports = {
+  randomLat,
+  randomLon,
+  calculateDistance,
+  getRoute,
+  decodePolyline,
+};
