@@ -31,37 +31,6 @@ const calculateDistance = (a, b) => {
   return 6371e3 * y;
 };
 
-// Wrapper for Google direction API
-const getRoute = (from, to) =>
-  axios
-    .get(
-      `https://maps.googleapis.com/maps/api/directions/json?origin=${
-        from.lat
-      },${from.lon}&destination=${to.lat},${to.lon}&key=${
-        process.env.DIRECTIONS_API_KEY
-      }`
-    )
-    .then(res => {
-      const route = res.data.routes[0];
-      // Distance in meters
-      const distance = route.legs
-        .map(l => l.distance.value)
-        .reduce((acc, cur) => acc + cur);
-
-      // Duration in minutes
-      const duration = Math.round(
-        route.legs
-          .map(l => l.duration.value)
-          .reduce((acc, cur) => acc + cur / 60)
-      );
-
-      // Coordinate points and durations for route subdivisions
-      const routeCoords = route.legs
-        .map(l => l.steps)
-        .reduce((acc, cur) => acc.concat(cur));
-      return { distance, duration, route: routeCoords };
-    });
-
 // Decodes Google Maps encoded polyline
 // Docs: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
 // Inspiration from: https://gist.github.com/ismaels/6636986
@@ -103,11 +72,47 @@ const decodePolyline = str => {
     // Accumulate change to previous coord
     lon += (res & 1) !== 0 ? ~(res >> 1) : res >> 1;
 
-    points.push({ latitude: lat / 1e5, longitude: lon / 1e5 });
+    points.push({ lat: lat / 1e5, lon: lon / 1e5 });
   }
   return points;
 };
 /* eslint-enable no-bitwise */
+
+// Wrapper for Google direction API
+const getRoute = (from, to) =>
+  axios
+    .get(
+      `https://maps.googleapis.com/maps/api/directions/json?origin=${
+        from.lat
+      },${from.lon}&destination=${to.lat},${to.lon}&key=${
+        process.env.DIRECTIONS_API_KEY
+      }`
+    )
+    .then(res => {
+      const route = res.data.routes[0];
+      // Distance in meters
+      const distance = route.legs
+        .map(l => l.distance.value)
+        .reduce((acc, cur) => acc + cur);
+
+      // Duration in minutes
+      const duration = Math.round(
+        route.legs
+          .map(l => l.duration.value)
+          .reduce((acc, cur) => acc + cur / 60)
+      );
+
+      // Coordinate points and durations for route subdivisions
+      const routeCoords = route.legs
+        .map(l => l.steps)
+        .reduce((acc, cur) => acc.concat(cur));
+      return {
+        distance,
+        duration,
+        route: route.overview_polyline.points,
+        steps: routeCoords,
+      };
+    });
 
 module.exports = {
   randomLat,

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { GoogleApiWrapper, Map, Marker, Polygon } from 'google-maps-react';
+import { GoogleApiWrapper, Map, Marker } from 'google-maps-react';
 import Immutable from 'immutable';
 import mapStyles from './MapStyles';
 import customerIcon from './icons/customer.png';
@@ -79,20 +79,6 @@ class MapWrapper extends Component {
               title={c.id.toString()}
             />
           );
-        })}
-        {this.state.cars.valueSeq().map(c => {
-          if (c.route) {
-            return c.route.route.map(r => (
-              <Polygon
-                paths={[
-                  { lat: r.start_location.lat, lng: r.start_location.lng },
-                  { lat: r.end_location.lat, lng: r.end_location.lng },
-                ]}
-                strokeColor={'#ff0000'}
-              />
-            ));
-          }
-          return null;
         })}
       </Map>
     ) : null;
